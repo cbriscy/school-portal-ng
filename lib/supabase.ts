@@ -6,7 +6,7 @@ export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// 🔐 Admin client (server-side ONLY - won't bundle to browser)
+// 🔐 Admin client (server-side ONLY)
 export const getSupabaseAdmin = () => {
   if (!process.env.SUPABASE_SERVICE_KEY) {
     throw new Error('SUPABASE_SERVICE_KEY is required on server')
