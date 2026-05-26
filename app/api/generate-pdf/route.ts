@@ -29,7 +29,6 @@ export async function POST(req: NextRequest) {
       .from("scores")
       .select("score, assessments(type, name, max_score)")
       .eq("student_id", studentId)
-      .eq("assessments.term_id", termId)
 
     // Transform scores for PDF
     const resultsBySubject: Record<string, any> = {}
@@ -76,9 +75,9 @@ export async function POST(req: NextRequest) {
       attendance: { daysOpened: 90, daysPresent: 88, daysAbsent: 2 },
     }
 
-    // Generate PDF
-    const doc = <WAECReportCard data={pdfData} />
-    const buffer = await pdf(doc).toBuffer()
+    // Generate PDF using @react-pdf/renderer (JSX is supported via babel transform)
+    const element = WAECReportCard({ data: pdfData })
+    const buffer = await pdf(element).toBuffer()
 
     // Upload to Supabase Storage
     const filename = `${student.reg_number}_result.pdf`
