@@ -25,7 +25,7 @@ export default function CheckResultPage() {
       // 1. Validate PIN
       const { data: pinData, error: pinErr } = await supabase
         .from("result_pins")
-        .select("student_id, is_used")
+        .select("id, student_id, is_used")
         .eq("pin", pin.toUpperCase().trim())
         .single()
         
