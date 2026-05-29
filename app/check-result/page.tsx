@@ -34,14 +34,51 @@ export default function CheckResultPage() {
         return
       }
 
-      const { data: scores } = await supabase
+      // Fetch scores WITH assessment details
+      const { data: scores, error: scoreErr } = await supabase
         .from("scores")
-        .select("score, assessments(name, type, max_score, term)")
+        .select(`
+          score,
+          assessments (
+            name,
+            type,
+            max_score,
+            term
+          )
+        `)
         .eq("student_id", student.id)
         .eq("assessments.term", term)
         
-      setResult({ student, scores: scores || [] })
+      if (scoreErr) console.error("Score fetch error:", scoreErr)
+
+      // Group scores by subject name for better display
+      const groupedScores: any[] = []
+      const subjectMap: Record<string, any> = {}
+      
+      scores?.forEach((s: any) => {
+        const subjName = s.assessments?.name || "Unknown Subject"
+        if (!subjectMap[subjName]) {
+          subjectMap[subjName] = {
+            subject: subjName,
+            ca1: 0, ca2: 0, ca3: 0, exam: 0,
+            total: 0, type: s.assessments?.type || "N/A"
+          }
+        }
+        const type = s.assessments?.type
+        if (type === "CA1") subjectMap[subjName].ca1 = s.score
+        else if (type === "CA2") subjectMap[subjName].ca2 = s.score
+        else if (type === "CA3") subjectMap[subjName].ca3 = s.score
+        else if (type === "Exam") subjectMap[subjName].exam = s.score
+      })
+      
+      Object.values(subjectMap).forEach((subj: any) => {
+        subj.total = subj.ca1 + subj.ca2 + subj.ca3 + subj.exam
+        groupedScores.push(subj)
+      })
+
+      setResult({ student, scores: groupedScores })
     } catch (err) {
+      console.error("Check error:", err)
       setError("❌ Network error. Please try again.")
     } finally {
       setLoading(false)
@@ -113,12 +150,7 @@ export default function CheckResultPage() {
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:transform-none text-lg"
               >
-                {loading ? (
-                  <span className="flex items-center justify-center space-x-2">
-                    <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
-                    <span>Fetching Results...</span>
-                  </span>
-                ) : "🔍 View Result"}
+                {loading ? "🔄 Fetching..." : "🔍 View Result"}
               </button>
             </div>
             <p className="text-center text-xs text-gray-500">🔒 Data is securely fetched from school records</p>
@@ -161,20 +193,26 @@ export default function CheckResultPage() {
                     <thead className="bg-gray-50 text-gray-600 text-sm uppercase">
                       <tr>
                         <th className="px-6 py-3 font-semibold">Subject</th>
-                        <th className="px-6 py-3 font-semibold text-center">Type</th>
-                        <th className="px-6 py-3 font-semibold text-center">Score</th>
+                        <th className="px-6 py-3 font-semibold text-center">CA1</th>
+                        <th className="px-6 py-3 font-semibold text-center">CA2</th>
+                        <th className="px-6 py-3 font-semibold text-center">CA3</th>
+                        <th className="px-6 py-3 font-semibold text-center">Exam</th>
+                        <th className="px-6 py-3 font-semibold text-center">Total</th>
                         <th className="px-6 py-3 font-semibold text-center">Grade</th>
                         <th className="px-6 py-3 font-semibold">Remark</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {result.scores.map((s: any, i: number) => {
-                        const g = getGrade(s.score)
+                      {result.scores.map((subj: any, i: number) => {
+                        const g = getGrade(subj.total)
                         return (
                           <tr key={i} className="hover:bg-indigo-50/50 transition-colors">
-                            <td className="px-6 py-4 font-medium text-gray-900">{s.assessments?.name || "N/A"}</td>
-                            <td className="px-6 py-4 text-center text-gray-600">{s.assessments?.type}</td>
-                            <td className="px-6 py-4 text-center font-bold text-lg">{s.score}</td>
+                            <td className="px-6 py-4 font-medium text-gray-900">{subj.subject}</td>
+                            <td className="px-6 py-4 text-center">{subj.ca1}</td>
+                            <td className="px-6 py-4 text-center">{subj.ca2}</td>
+                            <td className="px-6 py-4 text-center">{subj.ca3}</td>
+                            <td className="px-6 py-4 text-center">{subj.exam}</td>
+                            <td className="px-6 py-4 text-center font-bold text-lg">{subj.total}</td>
                             <td className="px-6 py-4 text-center">
                               <span className={`px-3 py-1 rounded-full text-xs font-bold ${g.color}`}>{g.grade}</span>
                             </td>
@@ -188,15 +226,15 @@ export default function CheckResultPage() {
               ) : (
                 <div className="p-12 text-center text-gray-500">
                   <span className="text-4xl block mb-2">📊</span>
-                  No scores recorded for this term yet.
+                  No scores recorded for {term} Term yet.
                 </div>
               )}
             </div>
 
-            {/* Footer Notes */}
+            {/* Footer */}
             <div className="text-center text-sm text-gray-500 space-y-1 print:hidden">
               <p>📅 Result generated on {new Date().toLocaleDateString()}</p>
-              <p> This is an official academic record. Do not alter.</p>
+              <p>This is an official academic record. Do not alter.</p>
             </div>
           </div>
         )}
