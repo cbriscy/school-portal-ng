@@ -12,35 +12,20 @@ export default function CheckResultPage() {
   const [loading, setLoading] = useState(false)
 
   const check = async () => {
-    if (!reg.trim()) {
-      setError("Please enter Registration Number")
-      return
-    }
-
-    setLoading(true)
-    setError("")
-    setResult(null)
+    if (!reg.trim()) { setError("Please enter Registration Number"); return }
+    setLoading(true); setError(""); setResult(null)
     
     try {
       const { data: student, error: stuErr } = await supabase
-        .from("students")
-        .select("*, classes(name)")
-        .eq("reg_number", reg.toUpperCase().trim())
-        .single()
-        
-      if (stuErr || !student) {
-        setError("Student not found")
-        setLoading(false)
-        return
-      }
+        .from("students").select("*, classes(name)")
+        .eq("reg_number", reg.toUpperCase().trim()).single()
+      
+      if (stuErr || !student) { setError("Student not found"); setLoading(false); return }
 
       const { data: scores } = await supabase
-        .from("scores")
-        .select("score, assessments(name, type)")
-        .eq("student_id", student.id)
-        .eq("assessments.term", term)
+        .from("scores").select("score, assessments(name, type)")
+        .eq("student_id", student.id).eq("assessments.term", term)
 
-      // Group by subject
       const subjects: any = {}
       scores?.forEach((s: any) => {
         const name = s.assessments?.name?.split(" ")[0] || "Subject"
@@ -64,57 +49,62 @@ export default function CheckResultPage() {
         else if (total >= 40) { grade = "D7"; remark = "Pass" }
         return { name, ...data, total, grade, remark }
       })
-
       setResult({ student, tableData })
-    } catch {
-      setError("Network error")
-    } finally {
-      setLoading(false)
-    }
+    } catch { setError("Network error") } finally { setLoading(false) }
+  }
+
+  const styles = {
+    container: { minHeight: "100vh", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" },
+    card: { background: "white", borderRadius: "20px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", padding: "40px", width: "100%", maxWidth: "500px" },
+    header: { textAlign: "center", marginBottom: "30px" },
+    icon: { fontSize: "64px", marginBottom: "15px" },
+    title: { fontSize: "28px", fontWeight: "bold", color: "#1a202c", margin: "0 0 8px 0" },
+    subtitle: { fontSize: "14px", color: "#718096", margin: 0 },
+    input: { width: "100%", padding: "14px 16px", border: "2px solid #e2e8f0", borderRadius: "10px", fontSize: "16px", marginBottom: "20px", boxSizing: "border-box", transition: "border-color 0.3s" },
+    label: { display: "block", fontSize: "14px", fontWeight: "600", color: "#4a5568", marginBottom: "8px" },
+    button: { width: "100%", padding: "14px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "white", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", transition: "transform 0.2s" },
+    error: { background: "#fed7d7", border: "1px solid #fc8181", color: "#c53030", padding: "12px", borderRadius: "8px", marginBottom: "20px", fontSize: "14px" },
+    resultCard: { maxWidth: "900px", margin: "0 auto", background: "white", boxShadow: "0 10px 40px rgba(0,0,0,0.2)" },
+    schoolHeader: { background: "linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%)", color: "white", padding: "40px 30px", textAlign: "center" },
+    schoolName: { fontSize: "32px", fontWeight: "bold", margin: "0 0 10px 0", letterSpacing: "1px" },
+    schoolInfo: { fontSize: "14px", opacity: 0.9, margin: "0 0 20px 0" },
+    termTitle: { fontSize: "20px", fontWeight: "600", margin: 0, borderTop: "2px solid rgba(255,255,255,0.3)", paddingTop: "20px" },
+    studentInfo: { padding: "25px 30px", borderBottom: "3px solid #e2e8f0", display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px", fontSize: "15px" },
+    infoItem: { display: "flex" },
+    infoLabel: { fontWeight: "600", color: "#4a5568", minWidth: "100px" },
+    table: { width: "100%", borderCollapse: "collapse", marginTop: "0" },
+    th: { background: "#1e3a8a", color: "white", padding: "14px 8px", textAlign: "center", border: "1px solid #1e3a8a", fontSize: "13px", fontWeight: "600" },
+    td: { padding: "12px 8px", textAlign: "center", border: "1px solid #cbd5e0", fontSize: "14px" },
+    subjectTd: { textAlign: "left", paddingLeft: "15px", fontWeight: "600" },
+    summary: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", padding: "25px 30px", marginTop: "20px" },
+    summaryBox: { border: "2px solid #e2e8f0", padding: "20px", textAlign: "center", borderRadius: "10px" },
+    summaryLabel: { fontSize: "13px", color: "#718096", fontWeight: "600", marginBottom: "8px" },
+    summaryValue: { fontSize: "28px", fontWeight: "bold", color: "#3182ce" },
+    footer: { padding: "30px", borderTop: "2px solid #e2e8f0", display: "flex", justifyContent: "space-between" },
+    signature: { textAlign: "center", width: "200px" },
+    sigLine: { borderTop: "1px solid #4a5568", paddingTop: "8px", marginTop: "50px", fontSize: "14px" },
+    actions: { padding: "25px 30px", background: "#f7fafc", display: "flex", gap: "15px", justifyContent: "center" },
+    actionBtn: { padding: "12px 24px", border: "none", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer" }
   }
 
   if (!result) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-          <div className="text-center mb-6">
-            <div className="text-5xl mb-3">🎓</div>
-            <h1 className="text-2xl font-bold text-gray-800">Result Portal</h1>
-            <p className="text-gray-600 text-sm mt-1">Enter your details below</p>
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={styles.header}>
+            <div style={styles.icon}>🎓</div>
+            <h1 style={styles.title}>Result Portal</h1>
+            <p style={styles.subtitle}>Enter your details below</p>
           </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Reg Number</label>
-              <input
-                type="text"
-                placeholder="SS1/001"
-                value={reg}
-                onChange={(e) => setReg(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Term</label>
-              <select
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none bg-white"
-              >
-                {TERMS.map(t => <option key={t} value={t}>{t} Term</option>)}
-              </select>
-            </div>
-
-            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
-
-            <button
-              onClick={check}
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {loading ? "Loading..." : "Check Result"}
-            </button>
+          <div>
+            <label style={styles.label}>Registration Number</label>
+            <input style={styles.input} placeholder="SS1/001" value={reg} onChange={e => setReg(e.target.value)} />
+            <label style={styles.label}>Academic Term</label>
+            <select style={styles.input} value={term} onChange={e => setTerm(e.target.value)}>
+              {TERMS.map(t => <option key={t} value={t}>{t} Term</option>)}
+            </select>
+            {error && <div style={styles.error}>{error}</div>}
+            <button style={styles.button} onClick={check} disabled={loading}>{loading ? "Loading..." : "Check Result"}</button>
           </div>
         </div>
       </div>
@@ -122,94 +112,73 @@ export default function CheckResultPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4 print:bg-white print:p-0">
-      <div className="max-w-4xl mx-auto bg-white shadow-xl print:shadow-none">
+    <div style={{ minHeight: "100vh", background: "#f7fafc", padding: "30px 15px", fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
+      <div style={styles.resultCard}>
+        <div style={styles.schoolHeader}>
+          <h1 style={styles.schoolName}>EXCELLENCE INTERNATIONAL SCHOOL</h1>
+          <p style={styles.schoolInfo}>Lagos, Nigeria • Motto: Knowledge & Discipline</p>
+          <h2 style={styles.termTitle}>{term.toUpperCase()} TERM RESULT • 2025/2026 SESSION</h2>
+        </div>
         
-        {/* School Header */}
-        <div className="bg-gradient-to-r from-blue-800 to-indigo-800 text-white p-8 text-center print:bg-blue-900">
-          <h1 className="text-3xl font-bold mb-2">EXCELLENCE INTERNATIONAL SCHOOL</h1>
-          <p className="text-blue-200">Lagos, Nigeria • Knowledge & Discipline</p>
-          <h2 className="text-xl mt-4 font-semibold">{term.toUpperCase()} TERM RESULT • 2025/2026 SESSION</h2>
+        <div style={styles.studentInfo}>
+          <div style={styles.infoItem}><span style={styles.infoLabel}>Name:</span> <span>{result.student.first_name} {result.student.last_name}</span></div>
+          <div style={styles.infoItem}><span style={styles.infoLabel}>Reg No:</span> <span>{result.student.reg_number}</span></div>
+          <div style={styles.infoItem}><span style={styles.infoLabel}>Class:</span> <span>{result.student.classes?.name || "N/A"}</span></div>
+          <div style={styles.infoItem}><span style={styles.infoLabel}>Session:</span> <span>2025/2026</span></div>
         </div>
 
-        {/* Student Info */}
-        <div className="p-6 border-b-2 border-gray-200">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span className="font-semibold">Name:</span> {result.student.first_name} {result.student.last_name}</div>
-            <div><span className="font-semibold">Reg No:</span> {result.student.reg_number}</div>
-            <div><span className="font-semibold">Class:</span> {result.student.classes?.name || "N/A"}</div>
-            <div><span className="font-semibold">Session:</span> 2025/2026</div>
-          </div>
-        </div>
-
-        {/* Results Table */}
-        <div className="p-6">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-800 text-white">
-                <th className="border border-gray-700 px-4 py-3 text-left">SUBJECT</th>
-                <th className="border border-gray-700 px-4 py-3 text-center">CA1</th>
-                <th className="border border-gray-700 px-4 py-3 text-center">CA2</th>
-                <th className="border border-gray-700 px-4 py-3 text-center">CA3</th>
-                <th className="border border-gray-700 px-4 py-3 text-center">EXAM</th>
-                <th className="border border-gray-700 px-4 py-3 text-center">TOTAL</th>
-                <th className="border border-gray-700 px-4 py-3 text-center">GRADE</th>
-                <th className="border border-gray-700 px-4 py-3 text-left">REMARK</th>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={{...styles.th, textAlign: "left", paddingLeft: "15px"}}>SUBJECT</th>
+              <th style={styles.th}>CA1</th>
+              <th style={styles.th}>CA2</th>
+              <th style={styles.th}>CA3</th>
+              <th style={styles.th}>EXAM</th>
+              <th style={styles.th}>TOTAL</th>
+              <th style={styles.th}>GRADE</th>
+              <th style={{...styles.th, textAlign: "left", paddingLeft: "15px"}}>REMARK</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.tableData.map((row: any, i: number) => (
+              <tr key={i} style={{ background: i % 2 === 0 ? "#f7fafc" : "white" }}>
+                <td style={{...styles.td, ...styles.subjectTd}}>{row.name}</td>
+                <td style={styles.td}>{row.ca1}</td>
+                <td style={styles.td}>{row.ca2}</td>
+                <td style={styles.td}>{row.ca3}</td>
+                <td style={styles.td}>{row.exam}</td>
+                <td style={{...styles.td, fontWeight: "bold", fontSize: "15px"}}>{row.total}</td>
+                <td style={{...styles.td, fontWeight: "bold"}}>{row.grade}</td>
+                <td style={{...styles.td, textAlign: "left", paddingLeft: "15px"}}>{row.remark}</td>
               </tr>
-            </thead>
-            <tbody>
-              {result.tableData.map((row: any, i: number) => (
-                <tr key={i} className={i % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                  <td className="border border-gray-300 px-4 py-3 font-medium">{row.name}</td>
-                  <td className="border border-gray-300 px-4 py-3 text-center">{row.ca1}</td>
-                  <td className="border border-gray-300 px-4 py-3 text-center">{row.ca2}</td>
-                  <td className="border border-gray-300 px-4 py-3 text-center">{row.ca3}</td>
-                  <td className="border border-gray-300 px-4 py-3 text-center">{row.exam}</td>
-                  <td className="border border-gray-300 px-4 py-3 text-center font-bold">{row.total}</td>
-                  <td className="border border-gray-300 px-4 py-3 text-center font-bold">{row.grade}</td>
-                  <td className="border border-gray-300 px-4 py-3">{row.remark}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            ))}
+          </tbody>
+        </table>
 
-          {/* Summary */}
-          <div className="mt-6 grid grid-cols-3 gap-4 text-sm">
-            <div className="border-2 border-gray-300 p-3">
-              <div className="font-semibold text-gray-700">Total Subjects</div>
-              <div className="text-2xl font-bold text-blue-600">{result.tableData.length}</div>
-            </div>
-            <div className="border-2 border-gray-300 p-3">
-              <div className="font-semibold text-gray-700">Average Score</div>
-              <div className="text-2xl font-bold text-blue-600">
-                {result.tableData.reduce((a: number, r: any) => a + r.total, 0) / result.tableData.length || 0}%
-              </div>
-            </div>
-            <div className="border-2 border-gray-300 p-3">
-              <div className="font-semibold text-gray-700">Overall Position</div>
-              <div className="text-2xl font-bold text-blue-600">1st</div>
-            </div>
+        <div style={styles.summary}>
+          <div style={styles.summaryBox}>
+            <div style={styles.summaryLabel}>TOTAL SUBJECTS</div>
+            <div style={styles.summaryValue}>{result.tableData.length}</div>
+          </div>
+          <div style={styles.summaryBox}>
+            <div style={styles.summaryLabel}>AVERAGE SCORE</div>
+            <div style={styles.summaryValue}>{(result.tableData.reduce((a: number, r: any) => a + r.total, 0) / result.tableData.length || 0).toFixed(1)}%</div>
+          </div>
+          <div style={styles.summaryBox}>
+            <div style={styles.summaryLabel}>OVERALL POSITION</div>
+            <div style={styles.summaryValue}>1st</div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="border-t-2 border-gray-300 p-6 flex justify-between print:mt-8">
-          <div className="text-center">
-            <div className="border-t border-gray-400 pt-2 mt-12 w-48">Class Teacher</div>
-          </div>
-          <div className="text-center">
-            <div className="border-t border-gray-400 pt-2 mt-12 w-48">Principal</div>
-          </div>
+        <div style={styles.footer}>
+          <div style={styles.signature}><div style={styles.sigLine}>Class Teacher</div></div>
+          <div style={styles.signature}><div style={styles.sigLine}>Principal</div></div>
         </div>
 
-        {/* Actions */}
-        <div className="p-6 bg-gray-50 flex justify-center space-x-4 print:hidden">
-          <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium">
-            🖨️ Print Result
-          </button>
-          <button onClick={() => setResult(null)} className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium">
-            🔄 New Search
-          </button>
+        <div style={styles.actions}>
+          <button style={{...styles.actionBtn, background: "#3182ce", color: "white"}} onClick={() => window.print()}>🖨️ Print Result</button>
+          <button style={{...styles.actionBtn, background: "#718096", color: "white"}} onClick={() => setResult(null)}>🔄 New Search</button>
         </div>
       </div>
     </div>
