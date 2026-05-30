@@ -39,21 +39,22 @@ export default function CheckResultPage() {
 
       const tableData = Object.entries(subjects).map(([name, data]: [string, any]) => {
         const total = data.ca1 + data.ca2 + data.ca3 + data.exam
-        let grade = "E8", remark = "Fail"
-        if (total >= 70) { grade = "A1"; remark = "Excellent" }
-        else if (total >= 65) { grade = "B2"; remark = "Very Good" }
-        else if (total >= 60) { grade = "B3"; remark = "Good" }
-        else if (total >= 55) { grade = "C4"; remark = "Credit" }
-        else if (total >= 50) { grade = "C5"; remark = "Credit" }
-        else if (total >= 45) { grade = "C6"; remark = "Credit" }
-        else if (total >= 40) { grade = "D7"; remark = "Pass" }
+        // WAEC/NECO Grading System
+        let grade = "F9", remark = "Fail"
+        if (total >= 75) { grade = "A1"; remark = "Excellent" }
+        else if (total >= 70) { grade = "B2"; remark = "Very Good" }
+        else if (total >= 65) { grade = "B3"; remark = "Good" }
+        else if (total >= 60) { grade = "C4"; remark = "Credit" }
+        else if (total >= 55) { grade = "C5"; remark = "Credit" }
+        else if (total >= 50) { grade = "C6"; remark = "Credit" }
+        else if (total >= 45) { grade = "D7"; remark = "Pass" }
+        else if (total >= 40) { grade = "E8"; remark = "Pass" }
         return { name, ...data, total, grade, remark }
       })
       setResult({ student, tableData })
     } catch { setError("Network error") } finally { setLoading(false) }
   }
 
-  // Simple CSS-in-JS with proper typing
   const css = (s: React.CSSProperties) => s
 
   if (!result) {
@@ -80,9 +81,17 @@ export default function CheckResultPage() {
     )
   }
 
+  const getGradeColor = (grade: string) => {
+    if (grade.startsWith("A")) return "#38a169"
+    if (grade.startsWith("B")) return "#3182ce"
+    if (grade.startsWith("C")) return "#d69e2e"
+    if (grade.startsWith("D")) return "#dd6b20"
+    return "#e53e3e"
+  }
+
   return (
     <div style={css({ minHeight: "100vh", background: "#f7fafc", padding: "30px 15px", fontFamily: "system-ui, sans-serif" })}>
-      <div style={css({ maxWidth: 880, margin: "0 auto", background: "white", boxShadow: "0 10px 40px rgba(0,0,0,0.15)", borderRadius: 16 })}>
+      <div style={css({ maxWidth: 900, margin: "0 auto", background: "white", boxShadow: "0 10px 40px rgba(0,0,0,0.15)", borderRadius: 16 })}>
         
         {/* School Header */}
         <div style={css({ background: "linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%)", color: "white", padding: "35px 28px", textAlign: "center" })}>
@@ -105,11 +114,11 @@ export default function CheckResultPage() {
             <thead>
               <tr>
                 <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "left", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600, paddingLeft: 14 })}>SUBJECT</th>
-                <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "center", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600 })}>CA1</th>
-                <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "center", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600 })}>CA2</th>
-                <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "center", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600 })}>CA3</th>
-                <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "center", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600 })}>EXAM</th>
-                <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "center", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600 })}>TOTAL</th>
+                <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "center", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600 })}>CA1<br/><small>(10%)</small></th>
+                <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "center", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600 })}>CA2<br/><small>(10%)</small></th>
+                <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "center", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600 })}>CA3<br/><small>(10%)</small></th>
+                <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "center", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600 })}>EXAM<br/><small>(60%)</small></th>
+                <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "center", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600 })}>TOTAL<br/><small>(100%)</small></th>
                 <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "center", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600 })}>GRADE</th>
                 <th style={css({ background: "#1e3a8a", color: "white", padding: "12px 8px", textAlign: "left", border: "1px solid #1e3a8a", fontSize: 12, fontWeight: 600, paddingLeft: 14 })}>REMARK</th>
               </tr>
@@ -123,7 +132,7 @@ export default function CheckResultPage() {
                   <td style={css({ padding: "11px 8px", textAlign: "center", border: "1px solid #cbd5e0", fontSize: 14 })}>{row.ca3}</td>
                   <td style={css({ padding: "11px 8px", textAlign: "center", border: "1px solid #cbd5e0", fontSize: 14 })}>{row.exam}</td>
                   <td style={css({ padding: "11px 8px", textAlign: "center", border: "1px solid #cbd5e0", fontSize: 15, fontWeight: "bold" })}>{row.total}</td>
-                  <td style={css({ padding: "11px 8px", textAlign: "center", border: "1px solid #cbd5e0", fontSize: 14, fontWeight: "bold" })}>{row.grade}</td>
+                  <td style={css({ padding: "11px 8px", textAlign: "center", border: "1px solid #cbd5e0", fontSize: 16, fontWeight: "bold", color: getGradeColor(row.grade) })}>{row.grade}</td>
                   <td style={css({ padding: "11px 8px", textAlign: "left", border: "1px solid #cbd5e0", fontSize: 14, paddingLeft: 14 })}>{row.remark}</td>
                 </tr>
               ))}
@@ -145,6 +154,22 @@ export default function CheckResultPage() {
               <div style={css({ fontSize: 26, fontWeight: "bold", color: "#3182ce" })}>1st</div>
             </div>
           </div>
+
+          {/* Grading Key */}
+          <div style={css({ marginTop: 24, padding: 20, background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0" })}>
+            <h3 style={css({ margin: "0 0 12px", fontSize: 14, fontWeight: 600, color: "#4a5568" }}>GRADING SYSTEM (WAEC/NECO STANDARD)</h3>
+            <div style={css({ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, fontSize: 13 })}>
+              <div>A1 (75-100): Excellent</div>
+              <div>B2 (70-74): Very Good</div>
+              <div>B3 (65-69): Good</div>
+              <div>C4 (60-64): Credit</div>
+              <div>C5 (55-59): Credit</div>
+              <div>C6 (50-54): Credit</div>
+              <div>D7 (45-49): Pass</div>
+              <div>E8 (40-44): Pass</div>
+              <div colSpan={4}>F9 (0-39): Fail</div>
+            </div>
+          </div>
         </div>
 
         {/* Footer Signatures */}
@@ -155,7 +180,7 @@ export default function CheckResultPage() {
 
         {/* Actions */}
         <div style={css({ padding: "22px 28px", background: "#f8fafc", display: "flex", gap: 12, justifyContent: "center" })}>
-          <button style={css({ padding: "10px 22px", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", background: "#3182ce", color: "white" })} onClick={() => window.print()}>🖨️ Print</button>
+          <button style={css({ padding: "10px 22px", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", background: "#3182ce", color: "white" })} onClick={() => window.print()}>🖨️ Print Result</button>
           <button style={css({ padding: "10px 22px", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", background: "#718096", color: "white" })} onClick={() => setResult(null)}>🔄 New Search</button>
         </div>
       </div>
