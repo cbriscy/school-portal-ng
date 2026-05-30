@@ -60,18 +60,19 @@ export default function TeacherDashboard() {
 
     if (!assessment) {
       const max = type === "Exam" ? 60 : 10
-      const { data: newA } = await supabase
+      const { data: newA, error: createErr } = await supabase
         .from("assessments")
         .insert({ name: `${subject} ${type}`, type, max_score: max, term })
         .select("id")
         .single()
+      if (createErr || !newA) return
       assessment = newA
     }
 
-    // Upsert score
+    // Upsert score - use ! to assert assessment is not null
     await supabase.from("scores").upsert({
       student_id: studentId,
-      assessment_id: assessment.id,
+      assessment_id: assessment!.id,
       score
     }, { onConflict: "student_id,assessment_id" })
   }
