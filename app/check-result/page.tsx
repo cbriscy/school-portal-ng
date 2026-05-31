@@ -1,8 +1,23 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { supabase } from "../../lib/supabase"
 
 const TERMS = ["First", "Second", "Third"] as const
+
+// Helper to get grade style based on WAEC standards
+const getGradeStyle = (grade: string) => {
+  switch (grade) {
+    case "A1": return "bg-green-100 text-green-800 border-green-300"
+    case "B2": 
+    case "B3": return "bg-blue-100 text-blue-800 border-blue-300"
+    case "C4": 
+    case "C5": 
+    case "C6": return "bg-yellow-100 text-yellow-800 border-yellow-300"
+    case "D7": 
+    case "E8": return "bg-orange-100 text-orange-800 border-orange-300"
+    default: return "bg-red-100 text-red-800 border-red-300"
+  }
+}
 
 export default function CheckResultPage() {
   const [reg, setReg] = useState("")
@@ -16,16 +31,19 @@ export default function CheckResultPage() {
     setLoading(true); setError(""); setResult(null)
     
     try {
+      // 1. Fetch Student
       const { data: student, error: stuErr } = await supabase
         .from("students").select("*, classes(name)")
         .eq("reg_number", reg.toUpperCase().trim()).single()
       
       if (stuErr || !student) { setError("Student not found"); setLoading(false); return }
 
+      // 2. Fetch Scores
       const { data: scores } = await supabase
         .from("scores").select("score, assessments(name, type)")
         .eq("student_id", student.id).eq("assessments.term", term)
 
+      // 3. Process Data (Group by Subject)
       const subjects: Record<string, any> = {}
       scores?.forEach((s: any) => {
         const name = s.assessments?.name?.split(" ")[0] || "Subject"
@@ -38,106 +56,142 @@ export default function CheckResultPage() {
 
       const tableData = Object.entries(subjects).map(([name, data]: [string, any]) => {
         const total = data.ca1 + data.ca2 + data.exam
-        let grade = "F9", remark = "Fail", gradeColor = "bg-red-100 text-red-700 border-red-300"
-        if (total >= 75) { grade = "A1"; remark = "Excellent"; gradeColor = "bg-green-100 text-green-700 border-green-300" }
-        else if (total >= 70) { grade = "B2"; remark = "Very Good"; gradeColor = "bg-blue-100 text-blue-700 border-blue-300" }
-        else if (total >= 65) { grade = "B3"; remark = "Good"; gradeColor = "bg-blue-100 text-blue-700 border-blue-300" }
-        else if (total >= 60) { grade = "C4"; remark = "Credit"; gradeColor = "bg-yellow-100 text-yellow-700 border-yellow-300" }
-        else if (total >= 55) { grade = "C5"; remark = "Credit"; gradeColor = "bg-yellow-100 text-yellow-700 border-yellow-300" }
-        else if (total >= 50) { grade = "C6"; remark = "Credit"; gradeColor = "bg-yellow-100 text-yellow-700 border-yellow-300" }
-        else if (total >= 45) { grade = "D7"; remark = "Pass"; gradeColor = "bg-orange-100 text-orange-700 border-orange-300" }
-        else if (total >= 40) { grade = "E8"; remark = "Pass"; gradeColor = "bg-orange-100 text-orange-700 border-orange-300" }
-        return { name, ...data, total, grade, remark, gradeColor }
+        let grade = "F9", remark = "Fail"
+        if (total >= 75) { grade = "A1"; remark = "Excellent" }
+        else if (total >= 70) { grade = "B2"; remark = "Very Good" }
+        else if (total >= 65) { grade = "B3"; remark = "Good" }
+        else if (total >= 60) { grade = "C4"; remark = "Credit" }
+        else if (total >= 55) { grade = "C5"; remark = "Credit" }
+        else if (total >= 50) { grade = "C6"; remark = "Credit" }
+        else if (total >= 45) { grade = "D7"; remark = "Pass" }
+        else if (total >= 40) { grade = "E8"; remark = "Pass" }
+        return { name, ...data, total, grade, remark, style: getGradeStyle(grade) }
       })
 
       const totalScore = tableData.reduce((sum: number, r: any) => sum + r.total, 0)
-      const average = tableData.length ? (totalScore / tableData.length).toFixed(1) : "0"
+      const average = tableData.length ? (totalScore / tableData.length).toFixed(1) : "0.0"
 
       setResult({ student, tableData, totalScore, average })
     } catch { setError("Network error") } finally { setLoading(false) }
   }
 
-  const css = (s: React.CSSProperties) => s
-
+  // Login View
   if (!result) {
     return (
-      <div style={css({ minHeight: "100vh", background: "linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "system-ui, sans-serif" })}>
-        <div style={css({ background: "white", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", padding: 40, width: "100%", maxWidth: 450 })}>
-          <div style={css({ textAlign: "center", marginBottom: 28 })}>
-            <div style={css({ fontSize: 64, marginBottom: 12 })}>🎓</div>
-            <h1 style={css({ fontSize: 26, fontWeight: "bold", color: "#1e3a8a", margin: "0 0 8px" })}>Result Portal</h1>
-            <p style={css({ fontSize: 14, color: "#64748b", margin: 0 })}>Enter your details to view result</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-800 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="text-6xl mb-4">🎓</div>
+            <h1 className="text-2xl font-bold text-gray-900">Result Portal</h1>
+            <p className="text-gray-500 mt-2">Enter your details to view your academic report</p>
           </div>
-          <div>
-            <label style={css({ display: "block", fontSize: 14, fontWeight: 600, color: "#475569", marginBottom: 6 })}>Registration Number</label>
-            <input style={css({ width: "100%", padding: "12px 14px", border: "2px solid #e2e8f0", borderRadius: 10, fontSize: 15, marginBottom: 16, boxSizing: "border-box" })} placeholder="SS1/001" value={reg} onChange={e => setReg(e.target.value)} />
-            <label style={css({ display: "block", fontSize: 14, fontWeight: 600, color: "#475569", marginBottom: 6 })}>Academic Term</label>
-            <select style={css({ width: "100%", padding: "12px 14px", border: "2px solid #e2e8f0", borderRadius: 10, fontSize: 15, marginBottom: 20, boxSizing: "border-box", background: "white" })} value={term} onChange={e => setTerm(e.target.value as any)}>
-              {TERMS.map(t => <option key={t} value={t}>{t} Term</option>)}
-            </select>
-            {error && <div style={css({ background: "#fee2e2", border: "1px solid #fecaca", color: "#dc2626", padding: 12, borderRadius: 8, marginBottom: 18, fontSize: 14 })}>{error}</div>}
-            <button style={css({ width: "100%", padding: 14, background: "linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%)", color: "white", border: "none", borderRadius: 10, fontSize: 16, fontWeight: "bold", cursor: "pointer" })} onClick={check} disabled={loading}>{loading ? "Loading..." : "🔍 Check Result"}</button>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Registration Number</label>
+              <input
+                type="text"
+                placeholder="e.g. SS1/001"
+                value={reg}
+                onChange={(e) => setReg(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 transition-all outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Academic Term</label>
+              <select
+                value={term}
+                onChange={(e) => setTerm(e.target.value as any)}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 transition-all outline-none bg-white"
+              >
+                {TERMS.map(t => <option key={t} value={t}>{t} Term</option>)}
+              </select>
+            </div>
+            {error && <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg text-sm">{error}</div>}
+            <button
+              onClick={check}
+              disabled={loading}
+              className="w-full bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? "Loading..." : "🔍 Check Result"}
+            </button>
           </div>
         </div>
       </div>
     )
   }
 
+  // Result View (Matches your HTML Template)
   return (
-    <div style={css({ minHeight: "100vh", background: "#f8fafc", padding: "24px 12px", fontFamily: "system-ui, sans-serif" })}>
-      <div style={css({ maxWidth: 900, margin: "0 auto", background: "white", borderRadius: 16, boxShadow: "0 10px 40px rgba(0,0,0,0.15)" })}>
-        
+    <div className="min-h-screen bg-gray-50 py-6 px-4 sm:px-6 lg:px-8 print:bg-white print:p-0">
+      
+      {/* Print Button */}
+      <div className="max-w-4xl mx-auto flex justify-end mb-4 no-print">
+        <button onClick={() => window.print()} className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white px-4 py-2 rounded-lg shadow transition-colors">
+          🖨️ Print Result
+        </button>
+      </div>
+
+      {/* Result Card */}
+      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden print:shadow-none print:rounded-none">
+
         {/* Header */}
-        <header style={css({ background: "linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%)", color: "white", padding: "32px 24px", textAlign: "center" })}>
-          <div style={css({ width: 80, height: 80, background: "white", borderRadius: "50%", margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, border: "3px solid rgba(255,255,255,0.3)" })}>🏫</div>
-          <h1 style={css({ fontSize: 26, fontWeight: "bold", margin: "0 0 8px", letterSpacing: 0.5 })}>Excellence International School</h1>
-          <p style={css({ fontSize: 14, opacity: 0.95, margin: "0 0 4px", fontStyle: "italic" })}>Knowledge • Discipline • Excellence</p>
-          <p style={css({ fontSize: 13, opacity: 0.9, margin: "8px 0 0" })}>📍 12, Adeola Odeku Street, Victoria Island, Lagos</p>
-          <p style={css({ fontSize: 13, opacity: 0.9, margin: "4px 0 0" })}>📞 +234 812 345 6789 &nbsp;|&nbsp; ✉️ info@excellenceinternational.edu.ng</p>
+        <header className="bg-gradient-to-r from-blue-900 to-blue-700 text-white px-6 py-8 sm:px-10 print:bg-blue-900">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-white/30 bg-white/10 flex items-center justify-center text-3xl mb-4">🏫</div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Excellence International School</h1>
+            <p className="text-blue-200 text-sm italic mt-1">Knowledge • Discipline • Excellence</p>
+            <div className="mt-4 text-sm text-blue-100 space-y-1">
+              <p>📍 12, Adeola Odeku Street, Victoria Island, Lagos</p>
+              <p>📞 +234 812 345 6789 &nbsp;|&nbsp; ✉️ info@excellenceinternational.edu.ng</p>
+            </div>
+          </div>
         </header>
 
         {/* Student Info */}
-        <section style={css({ padding: "24px", borderBottom: "2px solid #e2e8f0" })}>
-          <div style={css({ display: "flex", gap: 24, alignItems: "flex-start", flexWrap: "wrap" })}>
-            <div style={css({ width: 112, height: 112, background: "#e2e8f0", borderRadius: 12, border: "2px solid #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, flexShrink: 0 })}>👤</div>
-            <div style={css({ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px 24px", flex: 1, fontSize: 14 })}>
-              <div><span style={css({ fontWeight: 600, color: "#64748b" })}>Name:</span><p style={css({ margin: "4px 0 0", color: "#1e293b", fontWeight: 500 })}>{result.student.first_name} {result.student.last_name}</p></div>
-              <div><span style={css({ fontWeight: 600, color: "#64748b" })}>Admission No:</span><p style={css({ margin: "4px 0 0", color: "#1e293b", fontWeight: 500 })}>{result.student.reg_number}</p></div>
-              <div><span style={css({ fontWeight: 600, color: "#64748b" })}>Class:</span><p style={css({ margin: "4px 0 0", color: "#1e293b", fontWeight: 500 })}>{result.student.classes?.name || "N/A"}</p></div>
-              <div><span style={css({ fontWeight: 600, color: "#64748b" })}>Session:</span><p style={css({ margin: "4px 0 0", color: "#1e293b", fontWeight: 500 })}>2025/2026</p></div>
-              <div><span style={css({ fontWeight: 600, color: "#64748b" })}>Term:</span><p style={css({ margin: "4px 0 0", color: "#1e293b", fontWeight: 500 })}>{term} Term</p></div>
+        <section className="px-6 py-6 sm:px-10 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-xl border-2 border-gray-200 overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center text-4xl">👤</div>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 w-full text-sm sm:text-base">
+              <div><span className="font-semibold text-gray-600">Name:</span><p className="text-gray-800">{result.student.first_name} {result.student.last_name}</p></div>
+              <div><span className="font-semibold text-gray-600">Admission No:</span><p className="text-gray-800">{result.student.reg_number}</p></div>
+              <div><span className="font-semibold text-gray-600">Class:</span><p className="text-gray-800">{result.student.classes?.name || "N/A"}</p></div>
+              <div><span className="font-semibold text-gray-600">Session:</span><p className="text-gray-800">2025/2026</p></div>
+              <div><span className="font-semibold text-gray-600">Term:</span><p className="text-gray-800">{term} Term</p></div>
+              <div><span className="font-semibold text-gray-600">Age:</span><p className="text-gray-800">14-16 yrs</p></div>
             </div>
           </div>
         </section>
 
         {/* Result Table */}
-        <section style={css({ padding: "24px" })}>
-          <h2 style={css({ fontSize: 18, fontWeight: "bold", color: "#1e293b", marginBottom: 16, margin: "0 0 16px" })}>Academic Performance</h2>
-          <div style={css({ border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" })}>
-            <table style={css({ width: "100%", borderCollapse: "collapse", fontSize: 13 })}>
-              <thead>
-                <tr style={css({ background: "#f8fafc" })}>
-                  <th style={css({ padding: "12px 10", textAlign: "left", fontWeight: 600, color: "#475569", borderBottom: "2px solid #e2e8f0" })}>Subject</th>
-                  <th style={css({ padding: "12px 8", textAlign: "center", fontWeight: 600, color: "#475569", borderBottom: "2px solid #e2e8f0" })}>CA1</th>
-                  <th style={css({ padding: "12px 8", textAlign: "center", fontWeight: 600, color: "#475569", borderBottom: "2px solid #e2e8f0" })}>CA2</th>
-                  <th style={css({ padding: "12px 8", textAlign: "center", fontWeight: 600, color: "#475569", borderBottom: "2px solid #e2e8f0" })}>Exam</th>
-                  <th style={css({ padding: "12px 8", textAlign: "center", fontWeight: 600, color: "#475569", borderBottom: "2px solid #e2e8f0" })}>Total</th>
-                  <th style={css({ padding: "12px 8", textAlign: "center", fontWeight: 600, color: "#475569", borderBottom: "2px solid #e2e8f0" })}>Grade</th>
-                  <th style={css({ padding: "12px 8", textAlign: "center", fontWeight: 600, color: "#475569", borderBottom: "2px solid #e2e8f0" })}>Remark</th>
+        <section className="px-4 sm:px-10 py-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Academic Performance</h2>
+          <div className="border border-gray-200 rounded-lg shadow-sm print:shadow-none overflow-x-auto">
+            <table className="w-full text-[10px] sm:text-xs lg:text-sm min-w-[600px]">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-3 text-left font-semibold text-gray-600">Subject</th>
+                  <th className="px-3 py-3 text-center font-semibold text-gray-600">CA1</th>
+                  <th className="px-3 py-3 text-center font-semibold text-gray-600">CA2</th>
+                  <th className="px-3 py-3 text-center font-semibold text-gray-600">Exam</th>
+                  <th className="px-3 py-3 text-center font-semibold text-gray-600">Total</th>
+                  <th className="px-3 py-3 text-center font-semibold text-gray-600">Grade</th>
+                  <th className="px-3 py-3 text-center font-semibold text-gray-600">Remark</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100">
                 {result.tableData.map((row: any, i: number) => (
-                  <tr key={i} style={css({ background: i % 2 === 0 ? "white" : "#f8fafc" })}>
-                    <td style={css({ padding: "10px 10", fontWeight: 600, color: "#1e293b", borderBottom: "1px solid #f1f5f9" })}>{row.name}</td>
-                    <td style={css({ padding: "10px 8", textAlign: "center", borderBottom: "1px solid #f1f5f9" })}>{row.ca1}</td>
-                    <td style={css({ padding: "10px 8", textAlign: "center", borderBottom: "1px solid #f1f5f9" })}>{row.ca2}</td>
-                    <td style={css({ padding: "10px 8", textAlign: "center", borderBottom: "1px solid #f1f5f9" })}>{row.exam}</td>
-                    <td style={css({ padding: "10px 8", textAlign: "center", fontWeight: 600, borderBottom: "1px solid #f1f5f9" })}>{row.total}</td>
-                    <td style={css({ padding: "10px 8", textAlign: "center", borderBottom: "1px solid #f1f5f9" })}>
-                      <span style={css({ display: "inline-block", padding: "4px 10px", borderRadius: 12, fontSize: 12, fontWeight: "bold", background: row.gradeColor.split(" ")[0], color: row.gradeColor.split(" ")[1], border: `1px solid ${row.gradeColor.split(" ")[2]}` })}>{row.grade}</span>
+                  <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                    <td className="px-3 py-3 font-medium text-gray-900">{row.name}</td>
+                    <td className="text-center text-gray-700">{row.ca1}</td>
+                    <td className="text-center text-gray-700">{row.ca2}</td>
+                    <td className="text-center text-gray-700">{row.exam}</td>
+                    <td className="text-center font-bold text-gray-900">{row.total}</td>
+                    <td className="text-center">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold border ${row.style}`}>
+                        {row.grade}
+                      </span>
                     </td>
-                    <td style={css({ padding: "10px 8", textAlign: "center", borderBottom: "1px solid #f1f5f9", color: "#475569" })}>{row.remark}</td>
+                    <td className="text-center text-gray-600">{row.remark}</td>
                   </tr>
                 ))}
               </tbody>
@@ -146,42 +200,49 @@ export default function CheckResultPage() {
         </section>
 
         {/* Summary */}
-        <section style={css({ padding: "24px" })}>
-          <div style={css({ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 })}>
-            <div style={css({ background: "#eff6ff", padding: 16, borderRadius: 10, border: "1px solid #dbeafe" })}>
-              <p style={css({ fontSize: 11, color: "#1d4ed8", fontWeight: 600, margin: "0 0 6px", textTransform: "uppercase" })}>Total Subjects</p>
-              <p style={css({ fontSize: 22, fontWeight: "bold", color: "#1e40af", margin: 0 })}>{result.tableData.length}</p>
+        <section className="px-4 sm:px-10 py-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
+              <p className="text-xs text-blue-600 uppercase font-bold">Total Subjects</p>
+              <p className="text-2xl font-bold text-blue-900">{result.tableData.length}</p>
             </div>
-            <div style={css({ background: "#eff6ff", padding: 16, borderRadius: 10, border: "1px solid #dbeafe" })}>
-              <p style={css({ fontSize: 11, color: "#1d4ed8", fontWeight: 600, margin: "0 0 6px", textTransform: "uppercase" })}>Total Score</p>
-              <p style={css({ fontSize: 22, fontWeight: "bold", color: "#1e40af", margin: 0 })}>{result.totalScore}</p>
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
+              <p className="text-xs text-blue-600 uppercase font-bold">Total Score</p>
+              <p className="text-2xl font-bold text-blue-900">{result.totalScore}</p>
             </div>
-            <div style={css({ background: "#eff6ff", padding: 16, borderRadius: 10, border: "1px solid #dbeafe" })}>
-              <p style={css({ fontSize: 11, color: "#1d4ed8", fontWeight: 600, margin: "0 0 6px", textTransform: "uppercase" })}>Average</p>
-              <p style={css({ fontSize: 22, fontWeight: "bold", color: "#1e40af", margin: 0 })}>{result.average}%</p>
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
+              <p className="text-xs text-blue-600 uppercase font-bold">Average</p>
+              <p className="text-2xl font-bold text-blue-900">{result.average}%</p>
             </div>
-            <div style={css({ background: "#eff6ff", padding: 16, borderRadius: 10, border: "1px solid #dbeafe" })}>
-              <p style={css({ fontSize: 11, color: "#1d4ed8", fontWeight: 600, margin: "0 0 6px", textTransform: "uppercase" })}>Position</p>
-              <p style={css({ fontSize: 22, fontWeight: "bold", color: "#1e40af", margin: 0 })}>1st</p>
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
+              <p className="text-xs text-blue-600 uppercase font-bold">Position</p>
+              <p className="text-2xl font-bold text-blue-900">1st</p>
             </div>
           </div>
         </section>
 
         {/* Grading Key */}
-        <section style={css({ padding: "20px 24px", background: "#f8fafc", borderTop: "1px solid #e2e8f0" })}>
-          <h3 style={css({ fontSize: 13, fontWeight: 600, color: "#475569", margin: "0 0 10px" })}>GRADING SYSTEM (WAEC/NECO)</h3>
-          <div style={css({ fontSize: 12, color: "#64748b", lineHeight: 1.8 })}>
-            A1 (75-100) Excellent • B2 (70-74) Very Good • B3 (65-69) Good • C4-C6 (50-64) Credit • D7-E8 (40-49) Pass • F9 (0-39) Fail
+        <section className="px-4 sm:px-10 py-4 bg-gray-50 border-t border-gray-200">
+          <div className="text-[10px] sm:text-xs text-gray-600 leading-relaxed">
+            <span className="font-bold">GRADING SYSTEM:</span> A1 (75-100) Excellent • B2 (70-74) Very Good • B3 (65-69) Good • C4-C6 (50-64) Credit • D7-E8 (40-49) Pass • F9 (0-39) Fail
           </div>
         </section>
 
         {/* Footer */}
-        <footer style={css({ padding: "20px 24px", borderTop: "2px solid #e2e8f0", background: "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center" })}>
-          <div>
-            <p style={css({ fontSize: 12, color: "#64748b", margin: "0 0 4px" })}>Verification Code: <span style={css({ fontFamily: "monospace", fontWeight: "bold" })}>EIS-2025-{result.student.reg_number}</span></p>
-            <p style={css({ fontSize: 11, color: "#94a3b8", margin: 0 })}>Generated: {new Date().toLocaleDateString()}</p>
+        <footer className="px-4 sm:px-10 py-6 border-t border-gray-200 bg-gray-50 print:bg-white">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+            <div className="text-center sm:text-left">
+              <p className="text-xs text-gray-600">Verification Code: <span className="font-mono font-bold">EIS-{new Date().getFullYear()}-{result.student.reg_number}</span></p>
+              <p className="text-[10px] text-gray-400 mt-1">Generated on: {new Date().toLocaleDateString()}</p>
+            </div>
+            <div className="flex items-center gap-6">
+              <div className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-[10px] text-gray-400 bg-white">Stamp</div>
+              <div className="flex flex-col items-center">
+                <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">QR</div>
+                <span className="text-[10px] text-gray-500 mt-1">Scan to verify</span>
+              </div>
+            </div>
           </div>
-          <button onClick={() => window.print()} style={css({ padding: "10px 20px", background: "#1e3a8a", color: "white", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" })}>🖨️ Print Result</button>
         </footer>
       </div>
     </div>
