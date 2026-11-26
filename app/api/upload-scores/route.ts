@@ -1,15 +1,43 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { getSupabaseAdmin } from "@/lib/supabase"
+
+const RowSchema = z.object({
+  reg_number: z.string().min(1),
+  subject: z.string().min(1),
+  type: z.enum(["CA1", "CA2", "CA3", "Exam"]),
+  term: z.enum(["First", "Second", "Third"]),
+  score: z.coerce.number().min(0).max(100),
+})
+
+const maxForType = (type: string) => (type === "Exam" ? 60 : 10)
 
 export async function POST(req: NextRequest) {
   try {
-    const { rows } = await req.json()
+    const body = await req.json()
+    const parsed = z.array(RowSchema).min(1).safeParse(body?.rows)
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid payload: 'rows' must be a non-empty array of { reg_number, subject, type, term, score }",
+          issues: parsed.error.issues.slice(0, 10),
+        },
+        { status: 400 }
+      )
+    }
+    const rows = parsed.data
     const supabase = getSupabaseAdmin()
     let successCount = 0
-    let errors: string[] = []
+    const errors: string[] = []
 
     for (const row of rows) {
       try {
+        // 0. Reject scores above the assessment maximum for this type
+        if (row.score > maxForType(row.type)) {
+          errors.push(`${row.reg_number}: ${row.subject} ${row.type} score ${row.score} exceeds max ${maxForType(row.type)}`)
+          continue
+        }
+
         // 1. Find student
         const { data: student } = await supabase
           .from("students")
@@ -36,7 +64,7 @@ export async function POST(req: NextRequest) {
             .insert({
               name: `${row.subject} ${row.type}`,
               type: row.type,
-              max_score: row.type === "Exam" ? 60 : 10,
+              max_score: maxForType(row.type),
               term: row.term
             })
             .select("id")
@@ -51,7 +79,7 @@ export async function POST(req: NextRequest) {
           .from("scores")
           .upsert({
             student_id: student.id,
-            assessment_id: assessment!.id, // ! tells TypeScript "this is not null"
+            assessment_id: assessment!.id,
             score: row.score
           }, { onConflict: "student_id,assessment_id" })
           

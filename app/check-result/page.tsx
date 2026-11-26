@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { supabase } from "../../lib/supabase"
 
 const TERMS = ["First", "Second", "Third"] as const
@@ -19,6 +19,19 @@ const getGradeStyle = (grade: string) => {
   }
 }
 
+// WAEC grade bands, applied to the percentage of the maximum achievable score
+const getGrade = (percent: number) => {
+  if (percent >= 75) return { grade: "A1", remark: "Excellent" }
+  if (percent >= 70) return { grade: "B2", remark: "Very Good" }
+  if (percent >= 65) return { grade: "B3", remark: "Good" }
+  if (percent >= 60) return { grade: "C4", remark: "Credit" }
+  if (percent >= 55) return { grade: "C5", remark: "Credit" }
+  if (percent >= 50) return { grade: "C6", remark: "Credit" }
+  if (percent >= 45) return { grade: "D7", remark: "Pass" }
+  if (percent >= 40) return { grade: "E8", remark: "Pass" }
+  return { grade: "F9", remark: "Fail" }
+}
+
 export default function CheckResultPage() {
   const [reg, setReg] = useState("")
   const [term, setTerm] = useState<(typeof TERMS)[number]>("First")
@@ -36,40 +49,49 @@ export default function CheckResultPage() {
         .from("students").select("*, classes(name)")
         .eq("reg_number", reg.toUpperCase().trim()).single()
       
-      if (stuErr || !student) { setError("Student not found"); setLoading(false); return }
+      if (stuErr || !student) { setError("Student not found"); return }
 
-      // 2. Fetch Scores
-      const { data: scores } = await supabase
-        .from("scores").select("score, assessments(name, type)")
+      // 2. Fetch Scores (include max_score so grades can be computed on a percentage basis)
+      const { data: scores, error: scoreErr } = await supabase
+        .from("scores").select("score, assessments(name, type, max_score)")
         .eq("student_id", student.id).eq("assessments.term", term)
 
+      if (scoreErr || !scores || scores.length === 0) {
+        setError(`No results published for ${term} Term yet.`)
+        return
+      }
+
       // 3. Process Data (Group by Subject)
+      // Assessment names are built as "<subject> <type>" by the upload endpoints, so the
+      // subject is the name minus its trailing type. Taking only the first word breaks
+      // multi-word subjects (e.g. "Further Mathematics Exam" -> "Further", and two
+      // different subjects can overwrite each other's scores).
       const subjects: Record<string, any> = {}
-      scores?.forEach((s: any) => {
-        const name = s.assessments?.name?.split(" ")[0] || "Subject"
-        const type = s.assessments?.type
-        if (!subjects[name]) subjects[name] = { ca1: 0, ca2: 0, exam: 0 }
-        if (type === "CA1") subjects[name].ca1 = s.score
-        if (type === "CA2") subjects[name].ca2 = s.score
-        if (type === "Exam") subjects[name].exam = s.score
+      scores.forEach((s: any) => {
+        const a = s.assessments
+        if (!a?.name) return
+        const type = a.type as string
+        const subject = type && a.name.endsWith(` ${type}`)
+          ? a.name.slice(0, a.name.length - type.length - 1)
+          : a.name
+        if (!subjects[subject]) subjects[subject] = { ca1: 0, ca2: 0, ca3: 0, exam: 0, max: 0 }
+        if (type === "CA1") subjects[subject].ca1 = s.score
+        else if (type === "CA2") subjects[subject].ca2 = s.score
+        else if (type === "CA3") subjects[subject].ca3 = s.score
+        else if (type === "Exam") subjects[subject].exam = s.score
+        subjects[subject].max += a.max_score || 0
       })
 
       const tableData = Object.entries(subjects).map(([name, data]: [string, any]) => {
-        const total = data.ca1 + data.ca2 + data.exam
-        let grade = "F9", remark = "Fail"
-        if (total >= 75) { grade = "A1"; remark = "Excellent" }
-        else if (total >= 70) { grade = "B2"; remark = "Very Good" }
-        else if (total >= 65) { grade = "B3"; remark = "Good" }
-        else if (total >= 60) { grade = "C4"; remark = "Credit" }
-        else if (total >= 55) { grade = "C5"; remark = "Credit" }
-        else if (total >= 50) { grade = "C6"; remark = "Credit" }
-        else if (total >= 45) { grade = "D7"; remark = "Pass" }
-        else if (total >= 40) { grade = "E8"; remark = "Pass" }
-        return { name, ...data, total, grade, remark, style: getGradeStyle(grade) }
+        const total = data.ca1 + data.ca2 + data.ca3 + data.exam
+        const percent = data.max > 0 ? Math.round((total / data.max) * 1000) / 10 : 0
+        const { grade, remark } = getGrade(percent)
+        return { name, ...data, total, percent, grade, remark, style: getGradeStyle(grade) }
       })
 
       const totalScore = tableData.reduce((sum: number, r: any) => sum + r.total, 0)
-      const average = tableData.length ? (totalScore / tableData.length).toFixed(1) : "0.0"
+      const totalMax = tableData.reduce((sum: number, r: any) => sum + r.max, 0)
+      const average = totalMax > 0 ? ((totalScore / totalMax) * 100).toFixed(1) : "0.0"
 
       setResult({ student, tableData, totalScore, average })
     } catch { setError("Network error") } finally { setLoading(false) }
@@ -172,6 +194,7 @@ export default function CheckResultPage() {
                   <th className="px-3 py-3 text-left font-semibold text-gray-600">Subject</th>
                   <th className="px-3 py-3 text-center font-semibold text-gray-600">CA1</th>
                   <th className="px-3 py-3 text-center font-semibold text-gray-600">CA2</th>
+                  <th className="px-3 py-3 text-center font-semibold text-gray-600">CA3</th>
                   <th className="px-3 py-3 text-center font-semibold text-gray-600">Exam</th>
                   <th className="px-3 py-3 text-center font-semibold text-gray-600">Total</th>
                   <th className="px-3 py-3 text-center font-semibold text-gray-600">Grade</th>
@@ -184,6 +207,7 @@ export default function CheckResultPage() {
                     <td className="px-3 py-3 font-medium text-gray-900">{row.name}</td>
                     <td className="text-center text-gray-700">{row.ca1}</td>
                     <td className="text-center text-gray-700">{row.ca2}</td>
+                    <td className="text-center text-gray-700">{row.ca3}</td>
                     <td className="text-center text-gray-700">{row.exam}</td>
                     <td className="text-center font-bold text-gray-900">{row.total}</td>
                     <td className="text-center">
@@ -216,7 +240,7 @@ export default function CheckResultPage() {
             </div>
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
               <p className="text-xs text-blue-600 uppercase font-bold">Position</p>
-              <p className="text-2xl font-bold text-blue-900">1st</p>
+              <p className="text-2xl font-bold text-blue-900">—</p>
             </div>
           </div>
         </section>
@@ -224,7 +248,7 @@ export default function CheckResultPage() {
         {/* Grading Key */}
         <section className="px-4 sm:px-10 py-4 bg-gray-50 border-t border-gray-200">
           <div className="text-[10px] sm:text-xs text-gray-600 leading-relaxed">
-            <span className="font-bold">GRADING SYSTEM:</span> A1 (75-100) Excellent • B2 (70-74) Very Good • B3 (65-69) Good • C4-C6 (50-64) Credit • D7-E8 (40-49) Pass • F9 (0-39) Fail
+            <span className="font-bold">GRADING SYSTEM:</span> A1 (75-100%) Excellent • B2 (70-74%) Very Good • B3 (65-69%) Good • C4-C6 (50-64%) Credit • D7-E8 (40-49%) Pass • F9 (0-39%) Fail
           </div>
         </section>
 

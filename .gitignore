@@ -1,4 +1,15 @@
-node_modules
-.next
-node_modules
+# dependencies
+node_modules/
+
+# next.js build output
+.next/
+out/
+
+# environment variables - never commit secrets
+.env
+.env.*
+!.env.example
+
+# misc
 *.log
+.DS_Store

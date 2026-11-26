@@ -43,7 +43,7 @@ export default function TeacherLogin() {
     <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <div style={{ background: "white", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", padding: 48, width: "100%", maxWidth: 420 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 56, marginBottom: 12 }}>👨‍</div>
+          <div style={{ fontSize: 56, marginBottom: 12 }}>👨‍🏫</div>
           <h1 style={{ fontSize: 26, fontWeight: "bold", color: "#1a202c", margin: "0 0 8px" }}>Teacher Portal</h1>
           <p style={{ fontSize: 14, color: "#718096", margin: 0 }}>Sign in to manage students & scores</p>
         </div>
@@ -82,10 +82,6 @@ export default function TeacherLogin() {
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
-
-          <p style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#718096" }}>
-            Demo: teacher@school.com / admin123
-          </p>
         </form>
       </div>
     </div>

@@ -45,6 +45,8 @@ export default function TeacherDashboard() {
       setShowAddStudent(false)
       setNewStudent({ reg_number: "", first_name: "", last_name: "", class_id: "", parent_email: "", parent_phone: "" })
       loadData()
+    } else {
+      alert(`Failed to add student: ${error.message}`)
     }
     setLoading(false)
   }
@@ -191,8 +193,13 @@ export default function TeacherDashboard() {
                                 min="0"
                                 max={a.max}
                                 placeholder="0"
-                                onChange={async (e) => {
-                                  const score = parseInt(e.target.value) || 0
+                                onBlur={async (e) => {
+                                  // Save on blur instead of on every keystroke, and never
+                                  // write 0 when the field is simply cleared.
+                                  const raw = e.target.value.trim()
+                                  if (raw === "") return
+                                  const score = parseInt(raw)
+                                  if (Number.isNaN(score)) return
                                   if (score >= 0 && score <= a.max) {
                                     await handleScoreEntry(student.id, selectedSubject, a.type, score, term)
                                   }
